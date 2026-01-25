@@ -10,9 +10,17 @@ import Navbar from '@/components/layout/Navbar';
 import { agentApi, toolApi, AgentCreate } from '@/lib/api';
 
 const models = [
-    { id: 'gpt-4', name: 'GPT-4', description: 'Most capable, best for complex tasks' },
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Faster, great balance of speed & quality' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and cost-effective' },
+    // OpenAI Models
+    { id: 'gpt-4', name: 'GPT-4', description: 'Most capable, best for complex tasks', provider: 'OpenAI' },
+    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Faster, great balance of speed & quality', provider: 'OpenAI' },
+    { id: 'gpt-4o', name: 'GPT-4o', description: 'Latest GPT-4 optimized model', provider: 'OpenAI' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Smaller, faster, cost-effective', provider: 'OpenAI' },
+    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and cost-effective', provider: 'OpenAI' },
+    // Google Gemini Models
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable Gemini model', provider: 'Google' },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast and efficient', provider: 'Google' },
+    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', description: 'Latest experimental model', provider: 'Google' },
+    { id: 'gemini-pro', name: 'Gemini Pro', description: 'Balanced performance', provider: 'Google' },
 ];
 
 const memoryTypes = [
@@ -168,8 +176,8 @@ export default function CreateAgentPage() {
                                         type="button"
                                         onClick={() => setFormData({ ...formData, model: model.id })}
                                         className={`p-4 rounded-lg border text-left transition-all ${formData.model === model.id
-                                                ? 'border-primary-500 bg-primary-500/10'
-                                                : 'border-white/10 hover:border-white/20'
+                                            ? 'border-primary-500 bg-primary-500/10'
+                                            : 'border-white/10 hover:border-white/20'
                                             }`}
                                     >
                                         <div className="font-medium mb-1">{model.name}</div>
@@ -218,8 +226,8 @@ export default function CreateAgentPage() {
                                         type="button"
                                         onClick={() => toggleTool(tool.name)}
                                         className={`p-3 rounded-lg border text-left transition-all ${formData.tools?.includes(tool.name)
-                                                ? 'border-primary-500 bg-primary-500/10'
-                                                : 'border-white/10 hover:border-white/20'
+                                            ? 'border-primary-500 bg-primary-500/10'
+                                            : 'border-white/10 hover:border-white/20'
                                             }`}
                                     >
                                         <div className="font-medium text-sm mb-1">{tool.name}</div>
@@ -247,8 +255,8 @@ export default function CreateAgentPage() {
                                         type="button"
                                         onClick={() => setFormData({ ...formData, memory_type: mem.id as any })}
                                         className={`p-4 rounded-lg border text-left transition-all ${formData.memory_type === mem.id
-                                                ? 'border-primary-500 bg-primary-500/10'
-                                                : 'border-white/10 hover:border-white/20'
+                                            ? 'border-primary-500 bg-primary-500/10'
+                                            : 'border-white/10 hover:border-white/20'
                                             }`}
                                     >
                                         <div className="font-medium mb-1">{mem.name}</div>
