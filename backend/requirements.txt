@@ -14,7 +14,10 @@ pymongo==4.6.1
 httpx==0.26.0
 aiohttp==3.9.1
 
-# AI/ML
+# AgenticAI Framework (Core Agent Engine)
+agenticaiframework
+
+# AI/ML - LLM Providers
 openai==1.12.0
 anthropic==0.18.0
 google-generativeai==0.8.0

@@ -330,27 +330,45 @@ class ExecutionService:
         Run an agent using agenticaiframework primitives.
         This is where we map AgentBuilder config to the framework.
         """
-        from app.engine.executor import AgentExecutor
-        
-        # Convert to framework config
-        framework_config = to_framework_config(agent)
-        
-        # Start agent step
-        context.start_step(f"Execute: {agent.name}", "agent", agent.id)
-        context.current_step.input_data = input_data
-        context.log(f"Agent configuration: {framework_config}", source="agent")
-        
+        # Try to use agenticaiframework executor first
         try:
+            from app.engine.agentic_executor import AgentBuilderExecutor
+            
+            # Start agent step
+            context.start_step(f"Execute: {agent.name}", "agent", agent.id)
+            context.current_step.input_data = input_data
+            context.log(f"Using agenticaiframework executor", source="agent")
+            
             # Create executor and run
-            executor = AgentExecutor(agent, context)
+            executor = AgentBuilderExecutor(agent, context)
             result = await executor.execute(input_data)
             
             context.complete_step(output=result)
             return result
             
-        except Exception as e:
-            context.complete_step(error=str(e))
-            raise
+        except ImportError:
+            # Fallback to original executor if agenticaiframework not installed
+            from app.engine.executor import AgentExecutor
+            
+            # Convert to framework config
+            framework_config = to_framework_config(agent)
+            
+            # Start agent step
+            context.start_step(f"Execute: {agent.name}", "agent", agent.id)
+            context.current_step.input_data = input_data
+            context.log(f"Agent configuration (fallback): {framework_config}", source="agent")
+            
+            try:
+                # Create executor and run
+                executor = AgentExecutor(agent, context)
+                result = await executor.execute(input_data)
+                
+                context.complete_step(output=result)
+                return result
+                
+            except Exception as e:
+                context.complete_step(error=str(e))
+                raise
     
     def _calculate_cost(self, token_usage: TokenUsage, model: str) -> float:
         """Calculate cost estimate based on token usage and model"""
