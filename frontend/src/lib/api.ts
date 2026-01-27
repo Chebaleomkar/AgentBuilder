@@ -225,12 +225,15 @@ export interface Execution {
 export const executionApi = {
     list: async (params?: { agent_id?: string; workflow_id?: string; status?: string; page?: number }) => {
         const { data } = await api.get('/executions', { params });
-        return data;
+        return {
+            ...data,
+            executions: data.executions.map(transformId)
+        };
     },
 
     get: async (id: string) => {
         const { data } = await api.get(`/executions/${id}`);
-        return data as Execution;
+        return transformId(data) as Execution;
     },
 
     cancel: async (id: string) => {
@@ -259,5 +262,58 @@ export const demoApi = {
     runMultiAgent: async (task: string, context?: Record<string, any>) => {
         const { data } = await api.post('/demo/multi-agent', { task, context });
         return data;
+    },
+};
+
+// ========== Knowledge API ==========
+
+export interface KnowledgeSource {
+    id: string;
+    name: string;
+    type: 'file' | 'url' | 'text';
+    content?: string;
+    file_path?: string;
+    file_type?: string;
+    size_bytes?: number;
+    created_at: string;
+}
+
+export interface KnowledgeBase {
+    id: string;
+    agent_id: string;
+    sources: KnowledgeSource[];
+    created_at: string;
+    updated_at: string;
+}
+
+export const knowledgeApi = {
+    get: async (agentId: string) => {
+        const { data } = await api.get(`/knowledge/${agentId}`);
+        return transformId(data) as KnowledgeBase;
+    },
+
+    upload: async (agentId: string, file: File, name?: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (name) formData.append('name', name);
+        const { data } = await api.post(`/knowledge/${agentId}/upload`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return data;
+    },
+
+    addText: async (agentId: string, name: string, content: string) => {
+        const { data } = await api.post(`/knowledge/${agentId}/text`, { name, content });
+        return data;
+    },
+
+    deleteSource: async (agentId: string, sourceId: string) => {
+        const { data } = await api.delete(`/knowledge/${agentId}/${sourceId}`);
+        return data;
+    },
+
+    getContent: async (agentId: string, sourceId: string) => {
+        const { data } = await api.get(`/knowledge/${agentId}/${sourceId}/content`);
+        return data.content as string;
     },
 };
