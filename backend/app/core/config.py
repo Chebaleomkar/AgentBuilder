@@ -34,13 +34,17 @@ class Settings(BaseSettings):
     # Anthropic (optional)
     ANTHROPIC_API_KEY: Optional[str] = None
     
-    # Model Settings
-    DEFAULT_MODEL: str = "gpt-4"
+    # GROQ (fast inference)
+    GROQ_API_KEY: Optional[str] = None
+    
+    # Model Settings - Default to Gemini if available
+    DEFAULT_MODEL: str = "gemini-1.5-flash"
     DEFAULT_TEMPERATURE: float = 0.7
     
     # Supported Models by Provider
     OPENAI_MODELS: list[str] = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"]
     GEMINI_MODELS: list[str] = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro", "gemini-2.0-flash-exp"]
+    GROQ_MODELS: list[str] = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
     
     # ChromaDB for RAG
     CHROMA_PERSIST_DIR: str = "./chroma_db"

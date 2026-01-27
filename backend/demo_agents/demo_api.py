@@ -2,6 +2,7 @@
 Demo Agent API Routes
 Pre-built demo agents for showcasing platform capabilities
 """
+import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
@@ -10,9 +11,27 @@ from app.services.workflow_service import workflow_service
 from app.services.execution_service import execution_service
 from app.models.agent import AgentCreate, MemoryType
 from app.models.workflow import WorkflowCreate, WorkflowStep, StepType, CoordinationStrategy
+from app.core.config import settings
 
 
 router = APIRouter(prefix="/demo", tags=["Demo Agents"])
+
+
+def get_default_model() -> str:
+    """
+    Get the best available model based on configured API keys.
+    Priority: GROQ > Gemini > OpenAI
+    """
+    # Check GROQ first - it's the most reliable for the user
+    if os.getenv("GROQ_API_KEY"):
+        return "llama-3.3-70b-versatile"
+    elif settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your-gemini-api-key-here":
+        return "gemini-1.5-flash"
+    elif settings.OPENAI_API_KEY and settings.OPENAI_API_KEY != "your-openai-api-key-here":
+        return "gpt-4"
+    else:
+        # Default to GROQ's Llama model
+        return "llama-3.3-70b-versatile"
 
 
 # ========== Request Models ==========
@@ -56,7 +75,7 @@ RESEARCH_AGENT_CONFIG = AgentCreate(
 Always cite your sources and provide balanced, factual information.
 When using web_search, make multiple targeted queries to gather comprehensive data.
 Structure your final output in a clear, professional format.""",
-    model="gpt-4",
+    model=get_default_model(),
     temperature=0.7,
     tools=["web_search", "text_summarizer"],
     memory_type=MemoryType.SESSION
@@ -90,7 +109,7 @@ Output format:
         "warnings": []
     }
 }""",
-    model="gpt-4",
+    model=get_default_model(),
     temperature=0.3,  # Lower for more deterministic outputs
     tools=["data_analyzer", "file_reader"],
     memory_type=MemoryType.SESSION
@@ -119,7 +138,7 @@ Output your plan in this format:
 }
 
 Be thorough but concise. Focus on actionable items.""",
-    model="gpt-4",
+    model=get_default_model(),
     temperature=0.5,
     tools=[],
     memory_type=MemoryType.SESSION
@@ -151,7 +170,7 @@ Output format:
     "issues_encountered": [],
     "ready_for_review": true
 }""",
-    model="gpt-4",
+    model=get_default_model(),
     temperature=0.5,
     tools=["web_search", "api_caller", "data_analyzer"],
     memory_type=MemoryType.SESSION
@@ -192,7 +211,7 @@ Output format:
         "review_notes": "..."
     }
 }""",
-    model="gpt-4",
+    model=get_default_model(),
     temperature=0.5,
     tools=["text_summarizer"],
     memory_type=MemoryType.SESSION
