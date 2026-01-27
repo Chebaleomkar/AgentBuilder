@@ -196,17 +196,18 @@ export default function AgentDetailPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                         <button
                             onClick={() => router.push(`/playground?agent=${agentId}`)}
                             className="btn-primary flex items-center gap-2"
                         >
                             <Play className="w-4 h-4" />
-                            Run Agent
+                            <span className="hidden sm:inline">Run Agent</span>
                         </button>
                         <button
                             onClick={() => setShowDeleteConfirm(true)}
-                            className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors"
+                            className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 border border-transparent hover:border-red-400/20 transition-colors"
+                            title="Delete Agent"
                         >
                             <Trash2 className="w-5 h-5" />
                         </button>
@@ -228,7 +229,7 @@ export default function AgentDetailPage() {
                         onClick={() => setActiveTab('knowledge')}
                         className={clsx(
                             'px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2',
-                            activeTab === 'knowledge' ? 'border-primary-500 text-primary-400' : 'border-transparent text-gray-500 hover:text-white'
+                            activeTab === 'knowledge' ? 'border-primary-500 text-primary-400' : 'border-transparent text-green-500 hover:text-green-400'
                         )}
                     >
                         <Database className="w-4 h-4" />
@@ -447,9 +448,14 @@ export default function AgentDetailPage() {
                                             ))}
                                         </div>
                                     ) : knowledge?.sources.length === 0 ? (
-                                        <div className="text-center py-8">
-                                            <Database className="w-8 h-8 text-gray-600 mx-auto mb-2 opacity-20" />
-                                            <p className="text-sm">Knowledge base is empty</p>
+                                        <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-white/5 rounded-xl bg-dark-400/20">
+                                            <div className="w-12 h-12 rounded-full bg-dark-300 flex items-center justify-center mb-4">
+                                                <Database className="w-6 h-6 text-gray-600" />
+                                            </div>
+                                            <p className="text-sm font-medium text-gray-300">Knowledge base is empty</p>
+                                            <p className="text-xs text-gray-500 mt-1 max-w-[200px]">
+                                                Upload files or add text nuggets to provide context for your agent.
+                                            </p>
                                         </div>
                                     ) : (
                                         knowledge?.sources.map((source) => (

@@ -375,62 +375,86 @@ function PlaygroundContent() {
                                     </>
                                 )}
 
-                                <div className="flex gap-2">
+                                <div className="pt-4 border-t border-white/5 flex gap-2">
                                     <button
                                         onClick={() => router.push(urlAgentId ? `/agents/${selectedId}` : `/workflows/${selectedId}`)}
-                                        className="btn-ghost flex-1 text-xs py-2"
+                                        className="group relative flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold transition-all border border-white/5 hover:border-white/10"
                                     >
-                                        <Settings className="w-3.5 h-3.5 mr-2" />
-                                        Configure
+                                        <Settings className="w-3.5 h-3.5 text-gray-400 group-hover:text-primary-400 transition-colors" />
+                                        <span className="text-gray-400 group-hover:text-white transition-colors">Configure</span>
                                     </button>
                                     <button
                                         onClick={() => router.push('/playground')}
-                                        className="btn-ghost flex-1 text-xs py-2"
+                                        className="group relative flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold transition-all border border-white/5 hover:border-white/10"
                                     >
-                                        <ExternalLink className="w-3.5 h-3.5 mr-2" />
-                                        Full Playground
+                                        <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-accent-400 transition-colors" />
+                                        <span className="text-gray-400 group-hover:text-white transition-colors">Full View</span>
                                     </button>
                                 </div>
                             </div>
                         )}
 
-                        {/* Input */}
-                        <div className="card">
-                            <h2 className="text-lg font-semibold mb-4 flex items-center justify-between">
-                                <span>Input</span>
-                                {isSingleItemMode && (
-                                    <span className="text-xs px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg">
-                                        Target: {urlAgentId ? currentAgent?.name : currentWorkflow?.name}
-                                    </span>
-                                )}
-                            </h2>
-                            <textarea
-                                value={inputText}
-                                onChange={(e) => setInputText(e.target.value)}
-                                placeholder={
-                                    mode === 'demo' && selectedId === 'research'
-                                        ? 'Enter a research topic... e.g., "AI browser automation competitors"'
-                                        : `Send a prompt or task to ${isSingleItemMode ? (urlAgentId ? currentAgent?.name : currentWorkflow?.name) : 'the agent'}...`
-                                }
-                                className="textarea h-32 mb-4"
-                            />
-                            <button
-                                onClick={handleExecute}
-                                disabled={executeMutation.isPending}
-                                className="btn-primary w-full flex items-center justify-center gap-2 py-3"
-                            >
-                                {executeMutation.isPending ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        Executing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Play className="w-5 h-5" />
-                                        Run {isSingleItemMode ? (urlAgentId ? 'Agent' : 'Workflow') : 'Execution'}
-                                    </>
-                                )}
-                            </button>
+                        {/* Input Panel - Redesigned for "Beautiful" UI */}
+                        <div className="card relative overflow-hidden group/input">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 to-accent-500/5 opacity-0 group-hover/input:opacity-100 transition-opacity pointer-events-none" />
+
+                            <div className="relative z-10">
+                                <h2 className="text-lg font-bold mb-5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-gray-200">
+                                        <div className="w-1.5 h-5 bg-primary-500 rounded-full" />
+                                        Prompt Studio
+                                    </div>
+                                    {isSingleItemMode && (
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-[10px] uppercase font-bold tracking-wider">
+                                            <Zap className="w-3 h-3" />
+                                            Target: {urlAgentId ? currentAgent?.name : currentWorkflow?.name}
+                                        </div>
+                                    )}
+                                </h2>
+
+                                <div className="relative">
+                                    <textarea
+                                        value={inputText}
+                                        onChange={(e) => setInputText(e.target.value)}
+                                        placeholder={
+                                            mode === 'demo' && selectedId === 'research'
+                                                ? 'What would you like to research today?'
+                                                : `Send a tasks to ${isSingleItemMode ? (urlAgentId ? currentAgent?.name : currentWorkflow?.name) : 'the selected agent'}...`
+                                        }
+                                        className="textarea h-40 mb-5 resize-none bg-dark-400/30 border-white/5 focus:border-primary-500/50 focus:ring-4 focus:ring-primary-500/5 transition-all text-base leading-relaxed placeholder:text-gray-600"
+                                    />
+                                    <div className="absolute bottom-4 right-4 text-[10px] text-gray-700 font-mono hidden md:block">
+                                        Press ⌘ + Enter to execute
+                                    </div>
+                                </div>
+
+                                <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
+                                    onClick={handleExecute}
+                                    disabled={executeMutation.isPending}
+                                    className={clsx(
+                                        "w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-bold transition-all shadow-xl",
+                                        executeMutation.isPending
+                                            ? "bg-dark-300 text-gray-500 cursor-not-allowed"
+                                            : "bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-400 hover:to-primary-500 text-white shadow-primary-500/20 hover:shadow-primary-500/40"
+                                    )}
+                                >
+                                    {executeMutation.isPending ? (
+                                        <>
+                                            <div className="w-5 h-5 border-3 border-white/20 border-t-white rounded-full animate-spin" />
+                                            <span>Orchestrating AI...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                                                <Play className="w-4 h-4 fill-current" />
+                                            </div>
+                                            <span className="text-lg">Execute Task</span>
+                                        </>
+                                    )}
+                                </motion.button>
+                            </div>
                         </div>
                     </div>
 

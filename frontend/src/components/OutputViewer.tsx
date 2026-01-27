@@ -9,6 +9,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { clsx } from 'clsx';
+import { Database } from 'lucide-react';
 
 interface OutputViewerProps {
     data: any;
@@ -23,12 +24,13 @@ export default function OutputViewer({ data, className }: OutputViewerProps) {
     const [showSources, setShowSources] = useState(false);
 
     // Extract content from various response formats
-    const { content, structured, sources, metadata } = useMemo(() => {
-        if (!data) return { content: '', structured: null, sources: [], metadata: {} };
+    const { content, structured, sources, knowledgeAtoms, metadata } = useMemo(() => {
+        if (!data) return { content: '', structured: null, sources: [], knowledgeAtoms: [], metadata: {} };
 
         let rawContent = '';
         let structured: any = null;
         let sources: any[] = [];
+        let knowledgeAtoms: any[] = [];
         let metadata: any = {};
 
         // Helper to recursively find content in nested results
@@ -55,8 +57,24 @@ export default function OutputViewer({ data, className }: OutputViewerProps) {
         } else if (result && typeof result === 'object') {
             structured = result;
             rawContent = result.content || result.response || '';
+
+            // If rawContent still looks like JSON (e.g. LLM double wrapped it), try to parse it
+            if (rawContent.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(rawContent);
+                    if (parsed.content) rawContent = parsed.content;
+                } catch (e) {
+                    // Not valid JSON or no content field, keep as is
+                }
+            }
         } else {
             rawContent = JSON.stringify(data, null, 2);
+        }
+
+        // Clean up rawContent from any leftover JSON structure that might have leaked
+        if (rawContent.includes('"title":') && rawContent.includes('"content":')) {
+            // Regex to find a JSON block and take only the content or the part after it
+            rawContent = rawContent.replace(/\{[\s\S]*?"content":\s*"(.*?)"[\s\S]*?\}/g, '$1');
         }
 
         // Extract metadata and sources from original data
@@ -64,7 +82,19 @@ export default function OutputViewer({ data, className }: OutputViewerProps) {
             sources = data.tool_results.web_search;
         }
 
-        // If structured has sources, combine them
+        // Parse RAG search results if they exist as a string
+        if (data.tool_results?.rag_search && typeof data.tool_results.rag_search === 'string') {
+            const atomMatches = data.tool_results.rag_search.matchAll(/ATOM \d+ \(Source: (.*?) \| Confidence: (\d+)%\):\n([\s\S]*?)(?=\nATOM \d+|$|### END)/g);
+            for (const match of atomMatches) {
+                knowledgeAtoms.push({
+                    source: match[1],
+                    confidence: match[2],
+                    text: match[3].trim()
+                });
+            }
+        }
+
+        // If structured has sources list, combine them
         if (structured?.sources) {
             const extraSources = Array.isArray(structured.sources)
                 ? structured.sources.map((s: any) => typeof s === 'string' ? { title: s, url: '#' } : s)
@@ -77,7 +107,7 @@ export default function OutputViewer({ data, className }: OutputViewerProps) {
         if (data.model) metadata.model = data.model;
         if (data.duration_ms) metadata.duration_ms = data.duration_ms;
 
-        return { content: rawContent, structured, sources, metadata };
+        return { content: rawContent, structured, sources, knowledgeAtoms, metadata };
     }, [data]);
 
     const handleCopy = async () => {
@@ -199,20 +229,54 @@ export default function OutputViewer({ data, className }: OutputViewerProps) {
                             </div>
                         )}
 
+                        {/* Grounding Context Selector (RAG Atoms) */}
+                        {knowledgeAtoms.length > 0 && (
+                            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl overflow-hidden mb-6">
+                                <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/10 flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                                        <Database className="w-3 h-3" />
+                                        Knowledge Base Grounding
+                                    </div>
+                                    <div className="text-[10px] text-emerald-500/60 font-mono">
+                                        {knowledgeAtoms.length} Context Atoms
+                                    </div>
+                                </div>
+                                <div className="p-4 flex gap-3 overflow-x-auto scrollbar-hide">
+                                    {knowledgeAtoms.map((atom: any, i: number) => (
+                                        <div key={i} className="flex-shrink-0 w-64 bg-dark-300/50 border border-white/5 rounded-lg p-3 group hover:border-emerald-500/30 transition-colors">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[10px] font-semibold text-gray-400 truncate max-w-[120px]">
+                                                    {atom.source}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-emerald-400">
+                                                    {atom.confidence}%
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-gray-500 line-clamp-3 leading-relaxed">
+                                                {atom.text}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Main Content - Rendered Markdown */}
                         {content && (
                             <div className="prose prose-invert prose-sm max-w-none 
-                                prose-headings:text-white prose-headings:font-semibold prose-headings:mb-2 prose-headings:mt-4
-                                prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-                                prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-3
-                                prose-strong:text-white prose-strong:font-semibold
-                                prose-ul:my-2 prose-ol:my-2 prose-li:text-gray-300 prose-li:my-1
-                                prose-code:text-primary-400 prose-code:bg-dark-300 prose-code:px-1 prose-code:rounded
-                                prose-pre:bg-dark-300 prose-pre:border prose-pre:border-white/10
-                                prose-a:text-primary-400 prose-a:no-underline hover:prose-a:underline
-                                prose-blockquote:border-primary-500 prose-blockquote:text-gray-400
-                                prose-hr:border-white/10
-                                bg-dark-200/50 rounded-xl p-6 border border-white/5"
+                                prose-headings:text-white prose-headings:font-bold prose-headings:mb-4 prose-headings:mt-8
+                                prose-h1:text-3xl prose-h1:mb-6
+                                prose-h2:text-2xl prose-h2:border-b prose-h2:border-white/5 prose-h2:pb-2
+                                prose-h3:text-xl
+                                prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-5 prose-p:text-[15px]
+                                prose-strong:text-white prose-strong:font-bold
+                                prose-ul:my-5 prose-ol:my-5 prose-li:text-gray-300 prose-li:my-2 prose-li:text-[15px]
+                                prose-code:text-primary-400 prose-code:bg-dark-300 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none
+                                prose-pre:bg-dark-300 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-xl prose-pre:p-4
+                                prose-a:text-primary-400 prose-a:no-underline hover:prose-a:underline font-semibold
+                                prose-blockquote:border-l-4 prose-blockquote:border-primary-500 prose-blockquote:bg-primary-500/5 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:rounded-r-xl prose-blockquote:text-gray-300
+                                prose-hr:border-white/10 prose-hr:my-8
+                                bg-dark-400/40 rounded-2xl p-8 border border-white/5 shadow-2xl"
                             >
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                     {content}
