@@ -7,6 +7,7 @@ import { Plus, Workflow, MoreVertical, Play, Edit, Users } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import { workflowApi, Workflow as WorkflowType } from '@/lib/api';
 import { clsx } from 'clsx';
+import { WorkflowCardSkeleton } from '@/components/ui/Skeleton';
 
 const statusColors = {
     draft: 'badge-warning',
@@ -48,12 +49,8 @@ export default function WorkflowsPage() {
                 {/* Loading State */}
                 {isLoading && (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="card animate-pulse">
-                                <div className="h-6 bg-dark-100 rounded w-3/4 mb-4" />
-                                <div className="h-4 bg-dark-100 rounded w-1/2 mb-2" />
-                                <div className="h-4 bg-dark-100 rounded w-full" />
-                            </div>
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <WorkflowCardSkeleton key={i} />
                         ))}
                     </div>
                 )}

@@ -16,6 +16,8 @@ import OutputViewer from '@/components/OutputViewer';
 import { agentApi, workflowApi, demoApi, Execution, ExecutionStep } from '@/lib/api';
 import { clsx } from 'clsx';
 
+import { Skeleton } from '@/components/ui/Skeleton';
+
 type ExecutionMode = 'agent' | 'workflow' | 'demo';
 
 const demoAgents = [
@@ -26,8 +28,24 @@ const demoAgents = [
 
 function PlaygroundSkeleton() {
     return (
-        <div className="min-h-screen pt-16 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="min-h-screen pt-16">
+            <Navbar />
+            <div className="container mx-auto px-6 py-8">
+                <div className="mb-8 space-y-2">
+                    <Skeleton className="w-64 h-10" />
+                    <Skeleton className="w-96 h-4" />
+                </div>
+                <div className="grid lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                        <Skeleton className="w-full h-32 rounded-2xl" />
+                        <Skeleton className="w-full h-64 rounded-2xl" />
+                        <Skeleton className="w-full h-48 rounded-2xl" />
+                    </div>
+                    <div className="space-y-6">
+                        <Skeleton className="w-full h-full min-h-[400px] rounded-2xl" />
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

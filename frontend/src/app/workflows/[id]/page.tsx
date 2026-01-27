@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import Navbar from '@/components/layout/Navbar';
 import { workflowApi, agentApi, Workflow as WorkflowType } from '@/lib/api';
 import { clsx } from 'clsx';
+import { AgentDetailSkeleton } from '@/components/ui/Skeleton';
 import { useState, useEffect } from 'react';
 
 const coordinationStrategies = [
@@ -123,11 +124,8 @@ export default function WorkflowDetailPage() {
         return (
             <div className="min-h-screen pt-16">
                 <Navbar />
-                <div className="container mx-auto px-6 py-8">
-                    <div className="animate-pulse space-y-6">
-                        <div className="h-8 bg-dark-200 rounded w-1/3"></div>
-                        <div className="h-64 bg-dark-200 rounded-xl"></div>
-                    </div>
+                <div className="container mx-auto px-6 py-8 max-w-5xl">
+                    <AgentDetailSkeleton />
                 </div>
             </div>
         );
