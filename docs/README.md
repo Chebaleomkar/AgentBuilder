@@ -57,4 +57,4 @@ API Docs: http://localhost:8000/docs
 
 ---
 
-*Built with ❤️ on top of agenticaiframework*
+*Built by Omkar Chebale ❤️ on top of agenticaiframework*
