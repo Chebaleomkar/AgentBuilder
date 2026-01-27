@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.models.workflow import (
     WorkflowCreate, WorkflowUpdate, WorkflowResponse, WorkflowListResponse, WorkflowStatus
 )
-from app.models.execution import ExecutionRequest, ExecutionDetailResponse
+from app.models.execution import ExecutionRequest, ExecutionDetailResponse, ExecutionStatus
 from app.services.workflow_service import workflow_service
 from app.services.agent_service import agent_service
 from app.services.execution_service import execution_service, ExecutionContext
@@ -88,17 +88,17 @@ async def execute_workflow(workflow_id: str, request: ExecutionRequest):
         # Update status to running
         await execution_service.update_status(
             execution.id,
-            execution_service.ExecutionStatus.RUNNING
+            ExecutionStatus.RUNNING
         )
         
         # Create orchestrator and execute
         orchestrator = MultiAgentOrchestrator(workflow, context)
         result = await orchestrator.execute(request.input)
         
-        # Update execution with results
+        # Update status to results
         await execution_service.update_status(
             execution.id,
-            execution_service.ExecutionStatus.COMPLETED,
+            ExecutionStatus.COMPLETED,
             output_data=result,
             token_usage=context.token_usage
         )
@@ -111,7 +111,7 @@ async def execute_workflow(workflow_id: str, request: ExecutionRequest):
     except Exception as e:
         await execution_service.update_status(
             execution.id,
-            execution_service.ExecutionStatus.FAILED,
+            ExecutionStatus.FAILED,
             error_message=str(e)
         )
         await execution_service.save_context(execution.id, context)

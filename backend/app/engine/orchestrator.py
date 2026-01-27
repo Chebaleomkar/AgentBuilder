@@ -13,7 +13,7 @@ from app.models.agent import AgentResponse
 from app.models.execution import LogLevel
 from app.services.execution_service import ExecutionContext
 from app.services.agent_service import agent_service
-from app.engine.executor import AgentExecutor
+from app.engine.agentic_executor import AgentBuilderExecutor
 
 
 class OrchestratorContext:
@@ -134,7 +134,7 @@ class MultiAgentOrchestrator:
             
             try:
                 # Execute agent
-                executor = AgentExecutor(agent, self.context)
+                executor = AgentBuilderExecutor(agent, self.context)
                 result = await executor.execute(current_input)
                 
                 # Record output
@@ -197,7 +197,7 @@ class MultiAgentOrchestrator:
         
         # Execute supervisor
         self.context.start_step(f"Supervisor: {supervisor.name}", "agent", supervisor_id)
-        executor = AgentExecutor(supervisor, self.context)
+        executor = AgentBuilderExecutor(supervisor, self.context)
         result = await executor.execute(supervisor_input)
         self.context.complete_step(output=result)
         
@@ -363,7 +363,7 @@ class MultiAgentOrchestrator:
         self.context.current_step.input_data = input_data
         
         try:
-            executor = AgentExecutor(agent, self.context)
+            executor = AgentBuilderExecutor(agent, self.context)
             result = await executor.execute(input_data)
             
             self.orch_context.record_agent_output(agent.id, result)
