@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
     Bot, ArrowLeft, Play, Settings, Trash2,
     Clock, Zap, Activity, CheckCircle, XCircle,
-    Edit, MoreVertical
+    Edit, MoreVertical, Send
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '@/components/layout/Navbar';
@@ -21,11 +21,24 @@ export default function AgentDetailPage() {
     const agentId = params.id as string;
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [inputText, setInputText] = useState('');
+    const [executionResult, setExecutionResult] = useState<any>(null);
 
     const { data: agent, isLoading, error } = useQuery({
         queryKey: ['agent', agentId],
         queryFn: () => agentApi.get(agentId),
         enabled: !!agentId,
+    });
+
+    const executeMutation = useMutation({
+        mutationFn: (input: string) => agentApi.execute(agentId, { query: input }),
+        onSuccess: (data) => {
+            setExecutionResult(data);
+            toast.success('Execution completed!');
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.detail || 'Execution failed');
+        },
     });
 
     const deleteMutation = useMutation({
@@ -39,6 +52,14 @@ export default function AgentDetailPage() {
             toast.error('Failed to delete agent');
         },
     });
+
+    const handleRunAgent = () => {
+        if (!inputText.trim()) {
+            toast.error('Please enter a prompt');
+            return;
+        }
+        executeMutation.mutate(inputText);
+    };
 
     if (isLoading) {
         return (
@@ -110,7 +131,10 @@ export default function AgentDetailPage() {
 
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => router.push(`/playground?mode=agent&id=${agentId}`)}
+                            onClick={() => {
+                                const el = document.getElementById('run-agent-section');
+                                el?.scrollIntoView({ behavior: 'smooth' });
+                            }}
                             className="btn-primary flex items-center gap-2"
                         >
                             <Play className="w-4 h-4" />
@@ -127,8 +151,66 @@ export default function AgentDetailPage() {
 
                 {/* Main Content */}
                 <div className="grid lg:grid-cols-3 gap-6">
-                    {/* Left Column - Details */}
+                    {/* Left Column - Details & Execution */}
                     <div className="lg:col-span-2 space-y-6">
+                        {/* Run Agent Section (NEW) */}
+                        <motion.div
+                            id="run-agent-section"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="card border-primary-500/20 bg-primary-500/5 shadow-lg shadow-primary-500/5"
+                        >
+                            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-primary-400" />
+                                Quick Execution
+                            </h2>
+                            <div className="space-y-4">
+                                <textarea
+                                    value={inputText}
+                                    onChange={(e) => setInputText(e.target.value)}
+                                    placeholder={`Send a prompt to ${agent.name}...`}
+                                    className="textarea h-24 bg-dark-300 ring-1 ring-white/5 focus:ring-primary-500/50"
+                                />
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={handleRunAgent}
+                                        disabled={executeMutation.isPending}
+                                        className="btn-primary flex items-center gap-2"
+                                    >
+                                        {executeMutation.isPending ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Running...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="w-4 h-4" />
+                                                Execute
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Execution Results Snippet */}
+                            {executionResult && (
+                                <div className="mt-6 border-t border-white/10 pt-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-sm font-medium text-gray-400">Response</h3>
+                                        <button
+                                            onClick={() => router.push(`/playground?mode=agent&id=${agentId}`)}
+                                            className="text-xs text-primary-400 hover:underline flex items-center gap-1"
+                                        >
+                                            View in Playground
+                                            <ArrowLeft className="w-3 h-3 rotate-180" />
+                                        </button>
+                                    </div>
+                                    <div className="bg-dark-300 rounded-lg p-4 font-sans text-sm text-gray-300 prose prose-invert max-w-none">
+                                        {executionResult.output_data?.result?.response || executionResult.output_data?.result || 'Execution completed with no direct output.'}
+                                    </div>
+                                </div>
+                            )}
+                        </motion.div>
                         {/* Goal & Instructions */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}

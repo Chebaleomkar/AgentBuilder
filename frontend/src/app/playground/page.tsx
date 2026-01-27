@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Play, Bot, Workflow, Loader2, Send,
@@ -23,11 +24,20 @@ const demoAgents = [
 ];
 
 export default function PlaygroundPage() {
-    const [mode, setMode] = useState<ExecutionMode>('demo');
-    const [selectedId, setSelectedId] = useState<string>('research');
+    const searchParams = useSearchParams();
+    const [mode, setMode] = useState<ExecutionMode>((searchParams.get('mode') as ExecutionMode) || 'demo');
+    const [selectedId, setSelectedId] = useState<string>(searchParams.get('id') || 'research');
     const [inputText, setInputText] = useState('');
     const [result, setResult] = useState<Execution | null>(null);
     const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+
+    // Sync state if URL params change
+    useEffect(() => {
+        const urlMode = searchParams.get('mode') as ExecutionMode;
+        const urlId = searchParams.get('id');
+        if (urlMode) setMode(urlMode);
+        if (urlId) setSelectedId(urlId);
+    }, [searchParams]);
 
     const { data: agentsData } = useQuery({
         queryKey: ['agents'],
