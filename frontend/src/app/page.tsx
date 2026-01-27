@@ -252,7 +252,7 @@ export default function HomePage() {
             {/* Footer */}
             <footer className="py-10 border-t border-white/5">
                 <div className="container mx-auto px-6 text-center text-gray-500">
-                    <p>Built with ❤️ using agenticaiframework</p>
+                    <p>Built by <a href="https://www.google.com/search?q=omkar+chebale" target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-primary-400 transition-colors">Omkar Chebale</a> ❤️ using agenticaiframework</p>
                 </div>
             </footer>
         </div>

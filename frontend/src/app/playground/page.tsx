@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '@/components/layout/Navbar';
+import OutputViewer from '@/components/OutputViewer';
 import { agentApi, workflowApi, demoApi, Execution, ExecutionStep } from '@/lib/api';
 import { clsx } from 'clsx';
 
@@ -270,14 +271,9 @@ export default function PlaygroundPage() {
                                     </div>
                                 </div>
 
-                                {/* Output */}
+                                {/* Output - Using new OutputViewer */}
                                 {result.output_data && (
-                                    <div className="mb-6">
-                                        <h3 className="text-sm font-medium mb-2 text-gray-400">Output</h3>
-                                        <pre className="bg-dark-300 rounded-lg p-4 overflow-auto max-h-64 text-sm">
-                                            {JSON.stringify(result.output_data, null, 2)}
-                                        </pre>
-                                    </div>
+                                    <OutputViewer data={result.output_data} />
                                 )}
 
                                 {/* Error */}
