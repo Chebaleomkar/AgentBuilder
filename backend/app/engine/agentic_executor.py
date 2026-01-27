@@ -67,11 +67,35 @@ class TextSummarizerTool:
         return text[:max_length] + "..." if len(text) > max_length else text
 
 
+class RAGSearchTool:
+    """Tool for retrieving content from the agent's knowledge base using Pinecone."""
+    
+    name = "rag_search"
+    description = "Search and retrieve information from the agent's internal knowledge base and uploaded files"
+    
+    def __init__(self, agent_id: str):
+        self.agent_id = agent_id
+    
+    async def search(self, query: str) -> str:
+        """Search the knowledge base for relevant content using vector search."""
+        from app.services.rag_service import rag_service
+        try:
+            chunks = await rag_service.query(self.agent_id, query, top_k=5)
+            if not chunks:
+                return "No relevant information found in the internal knowledge base."
+            
+            return "\n\nRelevant Context from Knowledge Base:\n" + "\n---\n".join(chunks)
+        except Exception as e:
+            logger.error(f"RAG tool error: {e}")
+            return f"Error searching knowledge base: {str(e)}"
+
+
 # Tool registry
 TOOL_REGISTRY = {
     "web_search": WebSearchTool,
     "search": WebSearchTool,
     "text_summarizer": TextSummarizerTool,
+    "rag_search": RAGSearchTool,
 }
 
 
@@ -105,7 +129,10 @@ class AgentBuilderExecutor:
         for name in tool_names:
             if name in TOOL_REGISTRY:
                 try:
-                    tools[name] = TOOL_REGISTRY[name]()
+                    if name == "rag_search":
+                        tools[name] = TOOL_REGISTRY[name](self.agent_config.id)
+                    else:
+                        tools[name] = TOOL_REGISTRY[name]()
                     self.context.log(f"Initialized tool: {name}", source="agent")
                 except Exception as e:
                     self.context.log(f"Failed to initialize tool {name}: {e}", level=LogLevel.WARNING, source="agent")
@@ -173,6 +200,15 @@ class AgentBuilderExecutor:
             
             # Execute tool calls if needed
             tool_results = {}
+            
+            # Use RAG search if enabled
+            if self.tools and "rag_search" in self.tools:
+                self.context.log("Executing RAG search...", source="tool")
+                rag_tool = self.tools["rag_search"]
+                rag_context = await rag_tool.search(query)
+                tool_results["rag_search"] = rag_context
+                full_prompt += f"\n\n{rag_context}"
+
             if self.tools and "web_search" in self.tools:
                 # Perform web search for research-type queries
                 self.context.log("Executing web search tool...", source="tool")

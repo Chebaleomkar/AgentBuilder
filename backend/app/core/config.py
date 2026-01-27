@@ -46,8 +46,10 @@ class Settings(BaseSettings):
     GEMINI_MODELS: list[str] = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro", "gemini-2.0-flash-exp"]
     GROQ_MODELS: list[str] = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
     
-    # ChromaDB for RAG
-    CHROMA_PERSIST_DIR: str = "./chroma_db"
+    # Pinecone for RAG
+    PINECONE_API_KEY: Optional[str] = None
+    PINECONE_INDEX_NAME: str = "AgentBuilder"
+    PINECONE_ENVIRONMENT: str = "gcp-starter" # Free tier default
     
     # Execution Settings
     MAX_EXECUTION_TIME: int = 300  # seconds

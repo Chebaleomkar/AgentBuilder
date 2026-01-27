@@ -25,7 +25,10 @@ groq>=1.0.0
 tiktoken==0.5.2
 
 # Vector Store (RAG)
-chromadb==0.4.22
+pinecone-client>=3.0.0
+pypdf==4.0.1
+python-docx==1.1.0
+langchain-text-splitters==0.0.1
 
 # LangChain (optional, for additional tools)
 langchain==0.1.6
