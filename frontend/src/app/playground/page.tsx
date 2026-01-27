@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Play, Bot, Workflow, Loader2, Send,
     CheckCircle, XCircle, Clock, Zap,
-    ChevronDown, ChevronRight
+    ChevronDown, ChevronRight, ArrowLeft,
+    ExternalLink, Settings, Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '@/components/layout/Navbar';
@@ -23,21 +24,45 @@ const demoAgents = [
     { id: 'multi-agent', name: '🥉 Multi-Agent', description: 'Planner → Executor → Critic' },
 ];
 
-export default function PlaygroundPage() {
+function PlaygroundSkeleton() {
+    return (
+        <div className="min-h-screen pt-16 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        </div>
+    );
+}
+
+function PlaygroundContent() {
     const searchParams = useSearchParams();
-    const [mode, setMode] = useState<ExecutionMode>((searchParams.get('mode') as ExecutionMode) || 'demo');
-    const [selectedId, setSelectedId] = useState<string>(searchParams.get('id') || 'research');
+    const router = useRouter();
+
+    // Initial state from URL
+    const urlAgentId = searchParams.get('agent');
+    const urlMode = searchParams.get('mode') as ExecutionMode;
+    const urlId = searchParams.get('id');
+
+    const [mode, setMode] = useState<ExecutionMode>(urlAgentId ? 'agent' : (urlMode || 'demo'));
+    const [selectedId, setSelectedId] = useState<string>(urlAgentId || urlId || 'research');
     const [inputText, setInputText] = useState('');
     const [result, setResult] = useState<Execution | null>(null);
     const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
 
     // Sync state if URL params change
     useEffect(() => {
-        const urlMode = searchParams.get('mode') as ExecutionMode;
-        const urlId = searchParams.get('id');
-        if (urlMode) setMode(urlMode);
-        if (urlId) setSelectedId(urlId);
+        const agentId = searchParams.get('agent');
+        const m = searchParams.get('mode') as ExecutionMode;
+        const id = searchParams.get('id');
+
+        if (agentId) {
+            setMode('agent');
+            setSelectedId(agentId);
+        } else if (m) {
+            setMode(m);
+            if (id) setSelectedId(id);
+        }
     }, [searchParams]);
+
+    const isSingleAgentMode = !!urlAgentId;
 
     const { data: agentsData } = useQuery({
         queryKey: ['agents'],
@@ -47,6 +72,12 @@ export default function PlaygroundPage() {
     const { data: workflowsData } = useQuery({
         queryKey: ['workflows'],
         queryFn: () => workflowApi.list(),
+    });
+
+    const { data: currentAgent } = useQuery({
+        queryKey: ['agent', selectedId],
+        queryFn: () => agentApi.get(selectedId),
+        enabled: mode === 'agent' && !!selectedId,
     });
 
     const executeMutation = useMutation({
@@ -105,130 +136,216 @@ export default function PlaygroundPage() {
         }
     };
 
+    const selectedTitle = isSingleAgentMode
+        ? (currentAgent?.name || 'Agent Execution')
+        : mode === 'demo'
+            ? demoAgents.find(d => d.id === selectedId)?.name || 'Demo Execution'
+            : mode === 'agent'
+                ? agentsData?.agents?.find((a: any) => a.id === selectedId)?.name || 'Agent Execution'
+                : workflowsData?.workflows?.find((w: any) => w.id === selectedId)?.name || 'Workflow Execution';
+
     return (
         <div className="min-h-screen pt-16">
             <Navbar />
 
             <div className="container mx-auto px-6 py-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold mb-2">Execution Playground</h1>
-                    <p className="text-gray-400">Run agents and workflows, observe execution in real-time</p>
+                <div className="mb-8 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold mb-2">
+                            {isSingleAgentMode ? 'Agent Execution' : 'Execution Playground'}
+                        </h1>
+                        <p className="text-gray-400">
+                            {isSingleAgentMode
+                                ? `Running focused execution for ${currentAgent?.name || 'selected agent'}`
+                                : 'Run agents and workflows, observe execution in real-time'}
+                        </p>
+                    </div>
+                    {isSingleAgentMode && (
+                        <button
+                            onClick={() => router.push('/playground')}
+                            className="btn-secondary flex items-center gap-2"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Back to All Agents
+                        </button>
+                    )}
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-8">
                     {/* Input Panel */}
                     <div className="space-y-6">
-                        {/* Mode Selector */}
-                        <div className="card">
-                            <h2 className="text-lg font-semibold mb-4">Select Mode</h2>
-                            <div className="flex gap-2">
-                                {(['demo', 'agent', 'workflow'] as ExecutionMode[]).map((m) => (
+                        {!isSingleAgentMode ? (
+                            <>
+                                {/* Mode Selector */}
+                                <div className="card">
+                                    <h2 className="text-lg font-semibold mb-4">Select Mode</h2>
+                                    <div className="flex gap-2">
+                                        {(['demo', 'agent', 'workflow'] as ExecutionMode[]).map((m) => (
+                                            <button
+                                                key={m}
+                                                onClick={() => setMode(m)}
+                                                className={clsx(
+                                                    'px-4 py-2 rounded-lg capitalize transition-all',
+                                                    mode === m
+                                                        ? 'bg-primary-500 text-white'
+                                                        : 'bg-dark-100 text-gray-400 hover:text-white'
+                                                )}
+                                            >
+                                                {m}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Selection */}
+                                <div className="card">
+                                    <h2 className="text-lg font-semibold mb-4">
+                                        {mode === 'demo' ? 'Demo Agents' : mode === 'agent' ? 'Select Agent' : 'Select Workflow'}
+                                    </h2>
+
+                                    {mode === 'demo' && (
+                                        <div className="space-y-2">
+                                            {demoAgents.map((demo) => (
+                                                <button
+                                                    key={demo.id}
+                                                    onClick={() => setSelectedId(demo.id)}
+                                                    className={clsx(
+                                                        'w-full p-4 rounded-lg border text-left transition-all',
+                                                        selectedId === demo.id
+                                                            ? 'border-primary-500 bg-primary-500/10'
+                                                            : 'border-white/10 hover:border-white/20'
+                                                    )}
+                                                >
+                                                    <div className="font-medium">{demo.name}</div>
+                                                    <div className="text-sm text-gray-400">{demo.description}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {mode === 'agent' && (
+                                        <div className="space-y-2">
+                                            {agentsData?.agents?.map((agent: any) => (
+                                                <button
+                                                    key={agent.id}
+                                                    onClick={() => setSelectedId(agent.id)}
+                                                    className={clsx(
+                                                        'w-full p-4 rounded-lg border text-left transition-all',
+                                                        selectedId === agent.id
+                                                            ? 'border-primary-500 bg-primary-500/10'
+                                                            : 'border-white/10 hover:border-white/20'
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <Bot className="w-4 h-4 text-primary-400" />
+                                                        <span className="font-medium">{agent.name}</span>
+                                                    </div>
+                                                    <div className="text-sm text-gray-400">{agent.role}</div>
+                                                </button>
+                                            )) || <p className="text-gray-500">No agents found</p>}
+                                        </div>
+                                    )}
+
+                                    {mode === 'workflow' && (
+                                        <div className="space-y-2">
+                                            {workflowsData?.workflows?.map((wf: any) => (
+                                                <button
+                                                    key={wf.id}
+                                                    onClick={() => setSelectedId(wf.id)}
+                                                    className={clsx(
+                                                        'w-full p-4 rounded-lg border text-left transition-all',
+                                                        selectedId === wf.id
+                                                            ? 'border-primary-500 bg-primary-500/10'
+                                                            : 'border-white/10 hover:border-white/20'
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <Workflow className="w-4 h-4 text-accent-400" />
+                                                        <span className="font-medium">{wf.name}</span>
+                                                    </div>
+                                                    <div className="text-sm text-gray-400">{wf.description}</div>
+                                                </button>
+                                            )) || <p className="text-gray-500">No workflows found</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            /* Focused Agent Info Card */
+                            <div className="card border-primary-500/20 bg-primary-500/5">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                                        <Bot className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold">{currentAgent?.name || 'Loading Agent...'}</h2>
+                                        <p className="text-sm text-gray-400">{currentAgent?.role}</p>
+                                    </div>
+                                </div>
+
+                                {currentAgent?.goal && (
+                                    <div className="mb-4">
+                                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Goal</h3>
+                                        <p className="text-sm text-gray-300">{currentAgent.goal}</p>
+                                    </div>
+                                )}
+
+                                {currentAgent?.tools && currentAgent.tools.length > 0 && (
+                                    <div className="mb-6">
+                                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Capabilities</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {currentAgent.tools.map((tool: string) => (
+                                                <span key={tool} className="px-2 py-1 bg-dark-200 rounded text-xs text-primary-400 border border-primary-500/20">
+                                                    {tool}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2">
                                     <button
-                                        key={m}
-                                        onClick={() => setMode(m)}
-                                        className={clsx(
-                                            'px-4 py-2 rounded-lg capitalize transition-all',
-                                            mode === m
-                                                ? 'bg-primary-500 text-white'
-                                                : 'bg-dark-100 text-gray-400 hover:text-white'
-                                        )}
+                                        onClick={() => router.push(`/agents/${selectedId}`)}
+                                        className="btn-ghost flex-1 text-xs py-2"
                                     >
-                                        {m}
+                                        <Settings className="w-3.5 h-3.5 mr-2" />
+                                        Configure
                                     </button>
-                                ))}
+                                    <button
+                                        onClick={() => router.push('/playground')}
+                                        className="btn-ghost flex-1 text-xs py-2"
+                                    >
+                                        <ExternalLink className="w-3.5 h-3.5 mr-2" />
+                                        Full Playground
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Selection */}
-                        <div className="card">
-                            <h2 className="text-lg font-semibold mb-4">
-                                {mode === 'demo' ? 'Demo Agents' : mode === 'agent' ? 'Select Agent' : 'Select Workflow'}
-                            </h2>
-
-                            {mode === 'demo' && (
-                                <div className="space-y-2">
-                                    {demoAgents.map((demo) => (
-                                        <button
-                                            key={demo.id}
-                                            onClick={() => setSelectedId(demo.id)}
-                                            className={clsx(
-                                                'w-full p-4 rounded-lg border text-left transition-all',
-                                                selectedId === demo.id
-                                                    ? 'border-primary-500 bg-primary-500/10'
-                                                    : 'border-white/10 hover:border-white/20'
-                                            )}
-                                        >
-                                            <div className="font-medium">{demo.name}</div>
-                                            <div className="text-sm text-gray-400">{demo.description}</div>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {mode === 'agent' && (
-                                <div className="space-y-2">
-                                    {agentsData?.agents?.map((agent: any) => (
-                                        <button
-                                            key={agent.id}
-                                            onClick={() => setSelectedId(agent.id)}
-                                            className={clsx(
-                                                'w-full p-4 rounded-lg border text-left transition-all',
-                                                selectedId === agent.id
-                                                    ? 'border-primary-500 bg-primary-500/10'
-                                                    : 'border-white/10 hover:border-white/20'
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <Bot className="w-4 h-4 text-primary-400" />
-                                                <span className="font-medium">{agent.name}</span>
-                                            </div>
-                                            <div className="text-sm text-gray-400">{agent.role}</div>
-                                        </button>
-                                    )) || <p className="text-gray-500">No agents found</p>}
-                                </div>
-                            )}
-
-                            {mode === 'workflow' && (
-                                <div className="space-y-2">
-                                    {workflowsData?.workflows?.map((wf: any) => (
-                                        <button
-                                            key={wf.id}
-                                            onClick={() => setSelectedId(wf.id)}
-                                            className={clsx(
-                                                'w-full p-4 rounded-lg border text-left transition-all',
-                                                selectedId === wf.id
-                                                    ? 'border-primary-500 bg-primary-500/10'
-                                                    : 'border-white/10 hover:border-white/20'
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <Workflow className="w-4 h-4 text-accent-400" />
-                                                <span className="font-medium">{wf.name}</span>
-                                            </div>
-                                            <div className="text-sm text-gray-400">{wf.description}</div>
-                                        </button>
-                                    )) || <p className="text-gray-500">No workflows found</p>}
-                                </div>
-                            )}
-                        </div>
+                        )}
 
                         {/* Input */}
                         <div className="card">
-                            <h2 className="text-lg font-semibold mb-4">Input</h2>
+                            <h2 className="text-lg font-semibold mb-4 flex items-center justify-between">
+                                <span>Input</span>
+                                {isSingleAgentMode && (
+                                    <span className="text-xs px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                                        Target: {currentAgent?.name}
+                                    </span>
+                                )}
+                            </h2>
                             <textarea
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
                                 placeholder={
                                     mode === 'demo' && selectedId === 'research'
                                         ? 'Enter a research topic... e.g., "AI browser automation competitors"'
-                                        : 'Enter your prompt or task...'
+                                        : `Send a prompt or task to ${isSingleAgentMode ? currentAgent?.name : 'the agent'}...`
                                 }
                                 className="textarea h-32 mb-4"
                             />
                             <button
                                 onClick={handleExecute}
                                 disabled={executeMutation.isPending}
-                                className="btn-primary w-full flex items-center justify-center gap-2"
+                                className="btn-primary w-full flex items-center justify-center gap-2 py-3"
                             >
                                 {executeMutation.isPending ? (
                                     <>
@@ -238,7 +355,7 @@ export default function PlaygroundPage() {
                                 ) : (
                                     <>
                                         <Play className="w-5 h-5" />
-                                        Execute
+                                        Run {isSingleAgentMode ? 'Agent' : 'Execution'}
                                     </>
                                 )}
                             </button>
@@ -255,7 +372,7 @@ export default function PlaygroundPage() {
                                 className="card"
                             >
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-semibold">Execution Result</h2>
+                                    <h2 className="text-lg font-semibold">Results for {selectedTitle}</h2>
                                     <span className={clsx(
                                         result.status === 'completed' && 'badge-success',
                                         result.status === 'failed' && 'badge-error',
@@ -373,8 +490,14 @@ export default function PlaygroundPage() {
                         {!result && !executeMutation.isPending && (
                             <div className="card text-center py-16">
                                 <Play className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                                <h3 className="text-xl font-semibold mb-2">Ready to Execute</h3>
-                                <p className="text-gray-400">Select an agent or workflow and enter your input</p>
+                                <h3 className="text-xl font-semibold mb-2">
+                                    {isSingleAgentMode ? `Ready to Run ${currentAgent?.name}` : 'Ready to Execute'}
+                                </h3>
+                                <p className="text-gray-400">
+                                    {isSingleAgentMode
+                                        ? 'Enter your prompt and click Execute to start'
+                                        : 'Select an agent or workflow and enter your input'}
+                                </p>
                             </div>
                         )}
                     </div>
@@ -383,3 +506,12 @@ export default function PlaygroundPage() {
         </div>
     );
 }
+
+export default function PlaygroundPage() {
+    return (
+        <Suspense fallback={<PlaygroundSkeleton />}>
+            <PlaygroundContent />
+        </Suspense>
+    );
+}
+

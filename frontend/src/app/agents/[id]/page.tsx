@@ -131,10 +131,7 @@ export default function AgentDetailPage() {
 
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => {
-                                const el = document.getElementById('run-agent-section');
-                                el?.scrollIntoView({ behavior: 'smooth' });
-                            }}
+                            onClick={() => router.push(`/playground?agent=${agentId}`)}
                             className="btn-primary flex items-center gap-2"
                         >
                             <Play className="w-4 h-4" />
@@ -198,7 +195,7 @@ export default function AgentDetailPage() {
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-sm font-medium text-gray-400">Response</h3>
                                         <button
-                                            onClick={() => router.push(`/playground?mode=agent&id=${agentId}`)}
+                                            onClick={() => router.push(`/playground?agent=${agentId}`)}
                                             className="text-xs text-primary-400 hover:underline flex items-center gap-1"
                                         >
                                             View in Playground
