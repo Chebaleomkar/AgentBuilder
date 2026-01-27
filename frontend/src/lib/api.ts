@@ -37,25 +37,37 @@ export interface AgentCreate {
     memory_type?: 'session' | 'persistent' | 'knowledge';
 }
 
+// Helper to transform MongoDB _id to id
+const transformId = <T extends { _id?: string; id?: string }>(data: T): T & { id: string } => {
+    if (data._id && !data.id) {
+        return { ...data, id: data._id };
+    }
+    return data as T & { id: string };
+};
+
 export const agentApi = {
     list: async (page = 1, perPage = 20) => {
         const { data } = await api.get('/agents', { params: { page, per_page: perPage } });
+        // Transform agents array
+        if (data.agents) {
+            data.agents = data.agents.map(transformId);
+        }
         return data;
     },
 
     get: async (id: string) => {
         const { data } = await api.get(`/agents/${id}`);
-        return data as Agent;
+        return transformId(data) as Agent;
     },
 
     create: async (agent: AgentCreate) => {
         const { data } = await api.post('/agents', agent);
-        return data as Agent;
+        return transformId(data) as Agent;
     },
 
     update: async (id: string, updates: Partial<AgentCreate>) => {
         const { data } = await api.put(`/agents/${id}`, updates);
-        return data as Agent;
+        return transformId(data) as Agent;
     },
 
     delete: async (id: string) => {
@@ -105,22 +117,25 @@ export interface WorkflowCreate {
 export const workflowApi = {
     list: async (page = 1, perPage = 20) => {
         const { data } = await api.get('/workflows', { params: { page, per_page: perPage } });
+        if (data.workflows) {
+            data.workflows = data.workflows.map(transformId);
+        }
         return data;
     },
 
     get: async (id: string) => {
         const { data } = await api.get(`/workflows/${id}`);
-        return data as Workflow;
+        return transformId(data) as Workflow;
     },
 
     create: async (workflow: WorkflowCreate) => {
         const { data } = await api.post('/workflows', workflow);
-        return data as Workflow;
+        return transformId(data) as Workflow;
     },
 
     update: async (id: string, updates: Partial<WorkflowCreate>) => {
         const { data } = await api.put(`/workflows/${id}`, updates);
-        return data as Workflow;
+        return transformId(data) as Workflow;
     },
 
     delete: async (id: string) => {

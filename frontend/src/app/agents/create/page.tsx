@@ -4,23 +4,26 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Bot, ArrowLeft, Save, Sparkles } from 'lucide-react';
+import { Bot, ArrowLeft, Save, Sparkles, Lock, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '@/components/layout/Navbar';
 import { agentApi, toolApi, AgentCreate } from '@/lib/api';
 
+// Model definitions with availability status
 const models = [
-    // OpenAI Models
-    { id: 'gpt-4', name: 'GPT-4', description: 'Most capable, best for complex tasks', provider: 'OpenAI' },
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Faster, great balance of speed & quality', provider: 'OpenAI' },
-    { id: 'gpt-4o', name: 'GPT-4o', description: 'Latest GPT-4 optimized model', provider: 'OpenAI' },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Smaller, faster, cost-effective', provider: 'OpenAI' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and cost-effective', provider: 'OpenAI' },
-    // Google Gemini Models
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable Gemini model', provider: 'Google' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast and efficient', provider: 'Google' },
-    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', description: 'Latest experimental model', provider: 'Google' },
-    { id: 'gemini-pro', name: 'Gemini Pro', description: 'Balanced performance', provider: 'Google' },
+    // GROQ Models - Available ✓
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', description: 'Most capable, best for complex tasks', provider: 'GROQ', available: true },
+    { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', description: 'Excellent balance of speed & quality', provider: 'GROQ', available: true },
+    { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', description: 'Ultra-fast, great for simple tasks', provider: 'GROQ', available: true },
+    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', description: 'MoE model, 32K context', provider: 'GROQ', available: true },
+    // OpenAI Models - Out of Quota
+    { id: 'gpt-4', name: 'GPT-4', description: 'Most capable OpenAI model', provider: 'OpenAI', available: false },
+    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Faster GPT-4 variant', provider: 'OpenAI', available: false },
+    { id: 'gpt-4o', name: 'GPT-4o', description: 'Latest GPT-4 optimized', provider: 'OpenAI', available: false },
+    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and efficient', provider: 'OpenAI', available: false },
+    // Google Gemini Models - Out of Quota
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Most capable Gemini', provider: 'Google', available: false },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast and efficient', provider: 'Google', available: false },
 ];
 
 const memoryTypes = [
@@ -37,7 +40,7 @@ export default function CreateAgentPage() {
         role: '',
         goal: '',
         instructions: '',
-        model: 'gpt-4',
+        model: 'llama-3.3-70b-versatile', // Default to GROQ's best model
         temperature: 0.7,
         tools: [],
         memory_type: 'session',
@@ -169,21 +172,69 @@ export default function CreateAgentPage() {
                                 Model Settings
                             </h2>
 
-                            <div className="grid md:grid-cols-3 gap-4 mb-6">
-                                {models.map((model) => (
-                                    <button
-                                        key={model.id}
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, model: model.id })}
-                                        className={`p-4 rounded-lg border text-left transition-all ${formData.model === model.id
-                                            ? 'border-primary-500 bg-primary-500/10'
-                                            : 'border-white/10 hover:border-white/20'
-                                            }`}
-                                    >
-                                        <div className="font-medium mb-1">{model.name}</div>
-                                        <div className="text-xs text-gray-400">{model.description}</div>
-                                    </button>
-                                ))}
+                            {/* Available Models (GROQ) */}
+                            <div className="mb-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Zap className="w-4 h-4 text-emerald-400" />
+                                    <span className="text-sm font-medium text-emerald-400">Available Models</span>
+                                    <span className="text-xs text-gray-500">(GROQ - Ultra-fast inference)</span>
+                                </div>
+                                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    {models.filter(m => m.available).map((model) => (
+                                        <button
+                                            key={model.id}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, model: model.id })}
+                                            className={`p-4 rounded-lg border text-left transition-all ${formData.model === model.id
+                                                ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30'
+                                                : 'border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="font-medium">{model.name}</span>
+                                                {formData.model === model.id && (
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-gray-400">{model.description}</div>
+                                            <div className="text-xs text-emerald-500/70 mt-1">{model.provider}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Locked Models (OpenAI & Gemini) */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Lock className="w-4 h-4 text-gray-500" />
+                                    <span className="text-sm font-medium text-gray-500">Unavailable Models</span>
+                                </div>
+                                <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                    {models.filter(m => !m.available).map((model) => (
+                                        <div
+                                            key={model.id}
+                                            className="relative group"
+                                        >
+                                            <div
+                                                className="p-3 rounded-lg border border-white/5 bg-dark-300/50 opacity-50 cursor-not-allowed"
+                                            >
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <Lock className="w-3 h-3 text-gray-600" />
+                                                    <span className="font-medium text-sm text-gray-500">{model.name}</span>
+                                                </div>
+                                                <div className="text-xs text-gray-600">{model.provider}</div>
+                                            </div>
+                                            {/* Tooltip */}
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-dark-100 border border-white/10 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                                <div className="text-xs font-medium text-amber-400">⚠️ Out of Quota</div>
+                                                <div className="text-xs text-gray-400 mt-0.5">API key not configured</div>
+                                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
+                                                    <div className="border-4 border-transparent border-t-dark-100" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             <div>
