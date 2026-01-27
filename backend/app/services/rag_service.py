@@ -124,7 +124,8 @@ class RAGService:
                     **metadata,
                     "agent_id": agent_id,
                     "source_id": source_id,
-                    "text": chunk, # Store text in metadata for retrieval
+                    "text": chunk, # Store text for retrieval
+                    "name": metadata.get("name", "Document"), # Ensure name is in metadata
                     "chunk_idx": i
                 }
             })
@@ -145,14 +146,13 @@ class RAGService:
         except Exception as e:
             logger.error(f"Failed to delete document from Pinecone: {e}")
 
-    async def query(self, agent_id: str, query_text: str, top_k: int = 5) -> List[str]:
+    async def query(self, agent_id: str, query_text: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """Query Pinecone for relevant document chunks using Gemini query embeddings"""
         if not self.index or not settings.GEMINI_API_KEY:
             return []
         
         try:
             # 1. Get query embedding from Gemini
-            # Use task_type="retrieval_query" for better search performance
             resp = genai.embed_content(
                 model="models/text-embedding-004",
                 content=query_text,
@@ -168,7 +168,22 @@ class RAGService:
                 include_metadata=True
             )
             
-            return [match.metadata['text'] for match in results.matches if 'text' in match.metadata]
+            # 3. Filter and format results
+            # Only include results with a decent similarity score (threshold: 0.35)
+            relevant_chunks = []
+            logger.info(f"Pinecone query for query_text='{query_text[:50]}...' in namespace '{agent_id}' returned {len(results.matches)} potential matches")
+            
+            for match in results.matches:
+                logger.info(f"Match ID: {match.id}, Score: {match.score}")
+                if match.score >= 0.35 and 'text' in match.metadata:
+                    relevant_chunks.append({
+                        "text": match.metadata['text'],
+                        "source": match.metadata.get('name', 'Unknown Source'),
+                        "score": match.score
+                    })
+            
+            logger.info(f"Retrieved {len(relevant_chunks)} chunks above threshold 0.35")
+            return relevant_chunks
         except Exception as e:
             logger.error(f"Pinecone-Gemini query failed: {e}")
             return []

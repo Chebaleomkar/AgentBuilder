@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     
     # Pinecone for RAG
     PINECONE_API_KEY: Optional[str] = None
-    PINECONE_INDEX_NAME: str = "AgentBuilder"
+    PINECONE_INDEX_NAME: str = "rag-index"
     PINECONE_ENVIRONMENT: str = "gcp-starter" # Free tier default
     
     # Execution Settings

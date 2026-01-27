@@ -82,9 +82,15 @@ class RAGSearchTool:
         try:
             chunks = await rag_service.query(self.agent_id, query, top_k=5)
             if not chunks:
-                return "No relevant information found in the internal knowledge base."
+                return "CORE_KNOWLEDGE_EMPTY: No relevant internal documents found for this query."
             
-            return "\n\nRelevant Context from Knowledge Base:\n" + "\n---\n".join(chunks)
+            context = "\n### START OF RELEVANT KNOWLEDGE ATOMS ###\n"
+            for i, chunk in enumerate(chunks, 1):
+                context += f"\nATOM {i} (Source: {chunk['source']} | Confidence: {int(chunk['score']*100)}%):\n"
+                context += f"{chunk['text']}\n"
+            context += "\n### END OF RELEVANT KNOWLEDGE ATOMS ###"
+            
+            return context
         except Exception as e:
             logger.error(f"RAG tool error: {e}")
             return f"Error searching knowledge base: {str(e)}"
@@ -311,8 +317,11 @@ Goal: {self.agent_config.goal or 'Complete the given task efficiently.'}
 
 {self.agent_config.instructions or ''}
 
-IMPORTANT: You must provide your final response as a structured JSON object. 
-Your response will be parsed by a system, so ensure it is valid JSON.
+IMPORTANT INSTRUCTION ON GROUNDING:
+- If 'RELEVANT KNOWLEDGE ATOMS' are provided below the task, your response MUST be STRICTLY grounded in that context.
+- If the knowledge atoms do not contain the answer, your 'content' field MUST start with: "No relevant information was found in the internal knowledge base regarding [subject]."
+- Do not use pre-trained knowledge to answer questions about organizational policies or documents if they are not in the provided knowledge atoms.
+- Cite your sources by name (e.g., [According to Source X...]) within the content.
 
 STRUCTURE:
 {{
@@ -324,7 +333,7 @@ STRUCTURE:
   "sources": ["Source Name/URL 1", ...]
 }}
 
-If the task doesn't require all fields, provide empty values, but ALWAYS return this JSON structure."""
+If the task doesn't require all fields, provide empty values, but ALWAYS return this JSON structure. Ensure the 'sources' array includes names from the knowledge atoms if used."""
     
     def _build_execution_prompt(self, query: str) -> str:
         """Build the execution prompt."""
