@@ -38,11 +38,16 @@ function PlaygroundContent() {
 
     // Initial state from URL
     const urlAgentId = searchParams.get('agent');
+    const urlWorkflowId = searchParams.get('workflow');
     const urlMode = searchParams.get('mode') as ExecutionMode;
     const urlId = searchParams.get('id');
 
-    const [mode, setMode] = useState<ExecutionMode>(urlAgentId ? 'agent' : (urlMode || 'demo'));
-    const [selectedId, setSelectedId] = useState<string>(urlAgentId || urlId || 'research');
+    const [mode, setMode] = useState<ExecutionMode>(
+        urlAgentId ? 'agent' : (urlWorkflowId ? 'workflow' : (urlMode || 'demo'))
+    );
+    const [selectedId, setSelectedId] = useState<string>(
+        urlAgentId || urlWorkflowId || urlId || 'research'
+    );
     const [inputText, setInputText] = useState('');
     const [result, setResult] = useState<Execution | null>(null);
     const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
@@ -50,19 +55,23 @@ function PlaygroundContent() {
     // Sync state if URL params change
     useEffect(() => {
         const agentId = searchParams.get('agent');
+        const workflowId = searchParams.get('workflow');
         const m = searchParams.get('mode') as ExecutionMode;
         const id = searchParams.get('id');
 
         if (agentId) {
             setMode('agent');
             setSelectedId(agentId);
+        } else if (workflowId) {
+            setMode('workflow');
+            setSelectedId(workflowId);
         } else if (m) {
             setMode(m);
             if (id) setSelectedId(id);
         }
     }, [searchParams]);
 
-    const isSingleAgentMode = !!urlAgentId;
+    const isSingleItemMode = !!urlAgentId || !!urlWorkflowId;
 
     const { data: agentsData } = useQuery({
         queryKey: ['agents'],
@@ -78,6 +87,12 @@ function PlaygroundContent() {
         queryKey: ['agent', selectedId],
         queryFn: () => agentApi.get(selectedId),
         enabled: mode === 'agent' && !!selectedId,
+    });
+
+    const { data: currentWorkflow } = useQuery({
+        queryKey: ['workflow', selectedId],
+        queryFn: () => workflowApi.get(selectedId),
+        enabled: mode === 'workflow' && !!selectedId,
     });
 
     const executeMutation = useMutation({
@@ -136,8 +151,8 @@ function PlaygroundContent() {
         }
     };
 
-    const selectedTitle = isSingleAgentMode
-        ? (currentAgent?.name || 'Agent Execution')
+    const selectedTitle = isSingleItemMode
+        ? (urlAgentId ? currentAgent?.name : currentWorkflow?.name) || 'Selected Item'
         : mode === 'demo'
             ? demoAgents.find(d => d.id === selectedId)?.name || 'Demo Execution'
             : mode === 'agent'
@@ -152,21 +167,21 @@ function PlaygroundContent() {
                 <div className="mb-8 flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold mb-2">
-                            {isSingleAgentMode ? 'Agent Execution' : 'Execution Playground'}
+                            {isSingleItemMode ? (urlAgentId ? 'Agent Execution' : 'Workflow Execution') : 'Execution Playground'}
                         </h1>
                         <p className="text-gray-400">
-                            {isSingleAgentMode
-                                ? `Running focused execution for ${currentAgent?.name || 'selected agent'}`
+                            {isSingleItemMode
+                                ? `Running focused execution for ${urlAgentId ? (currentAgent?.name || 'selected agent') : (currentWorkflow?.name || 'selected workflow')}`
                                 : 'Run agents and workflows, observe execution in real-time'}
                         </p>
                     </div>
-                    {isSingleAgentMode && (
+                    {isSingleItemMode && (
                         <button
                             onClick={() => router.push('/playground')}
                             className="btn-secondary flex items-center gap-2"
                         >
                             <ArrowLeft className="w-4 h-4" />
-                            Back to All Agents
+                            Back to Playground
                         </button>
                     )}
                 </div>
@@ -174,7 +189,7 @@ function PlaygroundContent() {
                 <div className="grid lg:grid-cols-2 gap-8">
                     {/* Input Panel */}
                     <div className="space-y-6">
-                        {!isSingleAgentMode ? (
+                        {!isSingleItemMode ? (
                             <>
                                 {/* Mode Selector */}
                                 <div className="card">
@@ -271,41 +286,80 @@ function PlaygroundContent() {
                                 </div>
                             </>
                         ) : (
-                            /* Focused Agent Info Card */
+                            /* Focused Info Card */
                             <div className="card border-primary-500/20 bg-primary-500/5">
-                                <div className="flex items-center gap-4 mb-6">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                                        <Bot className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-bold">{currentAgent?.name || 'Loading Agent...'}</h2>
-                                        <p className="text-sm text-gray-400">{currentAgent?.role}</p>
-                                    </div>
-                                </div>
-
-                                {currentAgent?.goal && (
-                                    <div className="mb-4">
-                                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Goal</h3>
-                                        <p className="text-sm text-gray-300">{currentAgent.goal}</p>
-                                    </div>
-                                )}
-
-                                {currentAgent?.tools && currentAgent.tools.length > 0 && (
-                                    <div className="mb-6">
-                                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Capabilities</h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            {currentAgent.tools.map((tool: string) => (
-                                                <span key={tool} className="px-2 py-1 bg-dark-200 rounded text-xs text-primary-400 border border-primary-500/20">
-                                                    {tool}
-                                                </span>
-                                            ))}
+                                {urlAgentId ? (
+                                    <>
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                                                <Bot className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-xl font-bold">{currentAgent?.name || 'Loading Agent...'}</h2>
+                                                <p className="text-sm text-gray-400">{currentAgent?.role}</p>
+                                            </div>
                                         </div>
-                                    </div>
+
+                                        {currentAgent?.goal && (
+                                            <div className="mb-4">
+                                                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Goal</h3>
+                                                <p className="text-sm text-gray-300">{currentAgent.goal}</p>
+                                            </div>
+                                        )}
+
+                                        {currentAgent?.tools && currentAgent.tools.length > 0 && (
+                                            <div className="mb-6">
+                                                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Capabilities</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {currentAgent.tools.map((tool: string) => (
+                                                        <span key={tool} className="px-2 py-1 bg-dark-200 rounded text-xs text-primary-400 border border-primary-500/20">
+                                                            {tool}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center">
+                                                <Workflow className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-xl font-bold">{currentWorkflow?.name || 'Loading Workflow...'}</h2>
+                                                <p className="text-sm text-gray-400 capitalize">{currentWorkflow?.coordination_strategy || 'Sequential'} Strategy</p>
+                                            </div>
+                                        </div>
+
+                                        {currentWorkflow?.description && (
+                                            <div className="mb-4">
+                                                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Description</h3>
+                                                <p className="text-sm text-gray-300">{currentWorkflow.description}</p>
+                                            </div>
+                                        )}
+
+                                        {currentWorkflow?.agents && (
+                                            <div className="mb-6">
+                                                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Pipeline Agents</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {currentWorkflow.agents.map((agentId: string, i: number) => {
+                                                        const agent = agentsData?.agents?.find((a: any) => a.id === agentId);
+                                                        return (
+                                                            <span key={agentId} className="px-2 py-1 bg-dark-200 rounded text-xs text-accent-400 border border-accent-500/20">
+                                                                {i + 1}. {agent?.name || 'Agent'}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
 
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => router.push(`/agents/${selectedId}`)}
+                                        onClick={() => router.push(urlAgentId ? `/agents/${selectedId}` : `/workflows/${selectedId}`)}
                                         className="btn-ghost flex-1 text-xs py-2"
                                     >
                                         <Settings className="w-3.5 h-3.5 mr-2" />
@@ -326,9 +380,9 @@ function PlaygroundContent() {
                         <div className="card">
                             <h2 className="text-lg font-semibold mb-4 flex items-center justify-between">
                                 <span>Input</span>
-                                {isSingleAgentMode && (
+                                {isSingleItemMode && (
                                     <span className="text-xs px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg">
-                                        Target: {currentAgent?.name}
+                                        Target: {urlAgentId ? currentAgent?.name : currentWorkflow?.name}
                                     </span>
                                 )}
                             </h2>
@@ -338,7 +392,7 @@ function PlaygroundContent() {
                                 placeholder={
                                     mode === 'demo' && selectedId === 'research'
                                         ? 'Enter a research topic... e.g., "AI browser automation competitors"'
-                                        : `Send a prompt or task to ${isSingleAgentMode ? currentAgent?.name : 'the agent'}...`
+                                        : `Send a prompt or task to ${isSingleItemMode ? (urlAgentId ? currentAgent?.name : currentWorkflow?.name) : 'the agent'}...`
                                 }
                                 className="textarea h-32 mb-4"
                             />
@@ -355,7 +409,7 @@ function PlaygroundContent() {
                                 ) : (
                                     <>
                                         <Play className="w-5 h-5" />
-                                        Run {isSingleAgentMode ? 'Agent' : 'Execution'}
+                                        Run {isSingleItemMode ? (urlAgentId ? 'Agent' : 'Workflow') : 'Execution'}
                                     </>
                                 )}
                             </button>
@@ -491,10 +545,10 @@ function PlaygroundContent() {
                             <div className="card text-center py-16">
                                 <Play className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                                 <h3 className="text-xl font-semibold mb-2">
-                                    {isSingleAgentMode ? `Ready to Run ${currentAgent?.name}` : 'Ready to Execute'}
+                                    {isSingleItemMode ? `Ready to Run ${urlAgentId ? currentAgent?.name : currentWorkflow?.name}` : 'Ready to Execute'}
                                 </h3>
                                 <p className="text-gray-400">
-                                    {isSingleAgentMode
+                                    {isSingleItemMode
                                         ? 'Enter your prompt and click Execute to start'
                                         : 'Select an agent or workflow and enter your input'}
                                 </p>

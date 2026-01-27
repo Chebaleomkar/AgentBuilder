@@ -23,52 +23,61 @@ export default function OutputViewer({ data, className }: OutputViewerProps) {
     const [showSources, setShowSources] = useState(false);
 
     // Extract content from various response formats
-    const { content, sources, metadata } = useMemo(() => {
-        if (!data) return { content: '', sources: [], metadata: {} };
+    const { content, structured, sources, metadata } = useMemo(() => {
+        if (!data) return { content: '', structured: null, sources: [], metadata: {} };
 
         let rawContent = '';
+        let structured: any = null;
         let sources: any[] = [];
         let metadata: any = {};
 
-        // Handle different response structures
-        if (typeof data === 'string') {
-            rawContent = data;
-        } else if (data.result) {
-            if (typeof data.result === 'string') {
-                rawContent = data.result;
-            } else if (data.result.response) {
-                rawContent = data.result.response;
-            } else {
-                rawContent = JSON.stringify(data.result, null, 2);
+        // Helper to recursively find content in nested results
+        const findContent = (obj: any): any => {
+            if (!obj) return null;
+            if (typeof obj === 'string') return obj;
+
+            // Priority 1: Structured fields
+            if (obj.content || obj.summary || obj.title || obj.key_points) {
+                return obj;
             }
-        } else if (data.raw_response) {
-            rawContent = data.raw_response;
-        } else if (data.response) {
-            rawContent = data.response;
+
+            // Priority 2: Look into 'result' or 'response'
+            if (obj.result) return findContent(obj.result);
+            if (obj.response) return findContent(obj.response);
+
+            return null;
+        };
+
+        const result = findContent(data);
+
+        if (typeof result === 'string') {
+            rawContent = result;
+        } else if (result && typeof result === 'object') {
+            structured = result;
+            rawContent = result.content || result.response || '';
         } else {
             rawContent = JSON.stringify(data, null, 2);
         }
 
-        // Extract web search results as sources
+        // Extract metadata and sources from original data
         if (data.tool_results?.web_search) {
             sources = data.tool_results.web_search;
         }
 
-        // Extract metadata
-        if (data.token_usage) {
-            metadata.tokens = data.token_usage;
-        }
-        if (data.provider) {
-            metadata.provider = data.provider;
-        }
-        if (data.model) {
-            metadata.model = data.model;
-        }
-        if (data.duration_ms) {
-            metadata.duration_ms = data.duration_ms;
+        // If structured has sources, combine them
+        if (structured?.sources) {
+            const extraSources = Array.isArray(structured.sources)
+                ? structured.sources.map((s: any) => typeof s === 'string' ? { title: s, url: '#' } : s)
+                : [];
+            sources = [...sources, ...extraSources];
         }
 
-        return { content: rawContent, sources, metadata };
+        if (data.token_usage) metadata.tokens = data.token_usage;
+        if (data.provider) metadata.provider = data.provider;
+        if (data.model) metadata.model = data.model;
+        if (data.duration_ms) metadata.duration_ms = data.duration_ms;
+
+        return { content: rawContent, structured, sources, metadata };
     }, [data]);
 
     const handleCopy = async () => {
@@ -168,23 +177,84 @@ export default function OutputViewer({ data, className }: OutputViewerProps) {
                             </div>
                         )}
 
+                        {/* Structured Title */}
+                        {structured?.title && (
+                            <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
+                                {structured.title}
+                            </h2>
+                        )}
+
+                        {/* Structured Summary */}
+                        {structured?.summary && (
+                            <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4 flex gap-4">
+                                <Lightbulb className="w-6 h-6 text-primary-400 flex-shrink-0 mt-1" />
+                                <div>
+                                    <div className="text-sm font-semibold text-primary-400 uppercase tracking-wider mb-1">
+                                        Summary
+                                    </div>
+                                    <p className="text-gray-300 leading-relaxed">
+                                        {structured.summary}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Main Content - Rendered Markdown */}
-                        <div className="prose prose-invert prose-sm max-w-none 
-                            prose-headings:text-white prose-headings:font-semibold prose-headings:mb-2 prose-headings:mt-4
-                            prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-                            prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-3
-                            prose-strong:text-white prose-strong:font-semibold
-                            prose-ul:my-2 prose-ol:my-2 prose-li:text-gray-300 prose-li:my-1
-                            prose-code:text-primary-400 prose-code:bg-dark-300 prose-code:px-1 prose-code:rounded
-                            prose-pre:bg-dark-300 prose-pre:border prose-pre:border-white/10
-                            prose-a:text-primary-400 prose-a:no-underline hover:prose-a:underline
-                            prose-blockquote:border-primary-500 prose-blockquote:text-gray-400
-                            prose-hr:border-white/10
-                            bg-dark-200/50 rounded-xl p-6 border border-white/5"
-                        >
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {content}
-                            </ReactMarkdown>
+                        {content && (
+                            <div className="prose prose-invert prose-sm max-w-none 
+                                prose-headings:text-white prose-headings:font-semibold prose-headings:mb-2 prose-headings:mt-4
+                                prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                                prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-3
+                                prose-strong:text-white prose-strong:font-semibold
+                                prose-ul:my-2 prose-ol:my-2 prose-li:text-gray-300 prose-li:my-1
+                                prose-code:text-primary-400 prose-code:bg-dark-300 prose-code:px-1 prose-code:rounded
+                                prose-pre:bg-dark-300 prose-pre:border prose-pre:border-white/10
+                                prose-a:text-primary-400 prose-a:no-underline hover:prose-a:underline
+                                prose-blockquote:border-primary-500 prose-blockquote:text-gray-400
+                                prose-hr:border-white/10
+                                bg-dark-200/50 rounded-xl p-6 border border-white/5"
+                            >
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {content}
+                                </ReactMarkdown>
+                            </div>
+                        )}
+
+                        {/* Structured Key Points and Recommendations */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                            {structured?.key_points && Array.isArray(structured.key_points) && structured.key_points.length > 0 && (
+                                <div className="card bg-dark-200/30 border-white/5">
+                                    <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                                        <List className="w-4 h-4 text-accent-400" />
+                                        Key Highlights
+                                    </h3>
+                                    <ul className="space-y-2">
+                                        {structured.key_points.map((point: string, i: number) => (
+                                            <li key={i} className="flex gap-3 text-sm text-gray-400">
+                                                <span className="text-accent-400 font-bold">•</span>
+                                                {point}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {structured?.recommendations && Array.isArray(structured.recommendations) && structured.recommendations.length > 0 && (
+                                <div className="card bg-dark-200/30 border-white/5">
+                                    <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                                        <BookOpen className="w-4 h-4 text-emerald-400" />
+                                        Next Steps
+                                    </h3>
+                                    <ul className="space-y-2">
+                                        {structured.recommendations.map((rec: string, i: number) => (
+                                            <li key={i} className="flex gap-3 text-sm text-gray-400">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                                                {rec}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
 
                         {/* Sources Section */}

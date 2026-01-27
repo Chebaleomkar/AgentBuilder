@@ -208,9 +208,31 @@ class AgentBuilderExecutor:
             # Extract and parse output
             output = response.get("content", "")
             
+            # Robust JSON parsing (handles markdown blocks)
+            parsed_output = None
             try:
+                # Try direct parsing first
                 parsed_output = json.loads(output)
             except (json.JSONDecodeError, TypeError):
+                # Look for JSON within markdown code blocks
+                import re
+                json_match = re.search(r'```json\s*([\s\S]*?)\s*```', output)
+                if json_match:
+                    try:
+                        parsed_output = json.loads(json_match.group(1))
+                    except json.JSONDecodeError:
+                        pass
+                
+                # If still not parsed, try finding anything that looks like a JSON object
+                if not parsed_output:
+                    json_match = re.search(r'({[\s\S]*})', output)
+                    if json_match:
+                        try:
+                            parsed_output = json.loads(json_match.group(1))
+                        except json.JSONDecodeError:
+                            pass
+            
+            if not parsed_output:
                 parsed_output = {"response": output}
             
             # Log token usage
@@ -253,17 +275,26 @@ Goal: {self.agent_config.goal or 'Complete the given task efficiently.'}
 
 {self.agent_config.instructions or ''}
 
-Respond in a clear, structured format. When providing research or analysis, include:
-- Key findings
-- Supporting evidence
-- Sources (if available)
-- Recommendations (if applicable)"""
+IMPORTANT: You must provide your final response as a structured JSON object. 
+Your response will be parsed by a system, so ensure it is valid JSON.
+
+STRUCTURE:
+{{
+  "title": "A short, engaging title summarizing the response",
+  "summary": "A 2-3 sentence overview of the analysis or result",
+  "content": "The main body of your response in RICH MARKDOWN format. Use headings (###), bold text, tables, and lists where appropriate.",
+  "key_points": ["Highlight 1", "Highlight 2", "Highlight 3"],
+  "recommendations": ["Next step 1", "Next step 2"],
+  "sources": ["Source Name/URL 1", ...]
+}}
+
+If the task doesn't require all fields, provide empty values, but ALWAYS return this JSON structure."""
     
     def _build_execution_prompt(self, query: str) -> str:
         """Build the execution prompt."""
         return f"""Task: {query}
 
-Please complete this task thoroughly and provide a comprehensive response."""
+Please perform this task and return your results in the requested JSON format."""
     
     def _extract_query(self, input_data: Dict[str, Any]) -> str:
         """Extract query string from various input formats."""
