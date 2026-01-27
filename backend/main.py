@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import connect_db, close_db
 from app.services.tool_service import tool_service
-from app.api import agents, workflows, tools, logs
+from app.api import agents, workflows, tools, logs, knowledge
 from demo_agents.demo_api import router as demo_router
 
 
@@ -89,6 +89,7 @@ app.include_router(agents.router, prefix=settings.API_V1_PREFIX)
 app.include_router(workflows.router, prefix=settings.API_V1_PREFIX)
 app.include_router(tools.router, prefix=settings.API_V1_PREFIX)
 app.include_router(logs.router, prefix=settings.API_V1_PREFIX)
+app.include_router(knowledge.router, prefix=settings.API_V1_PREFIX)
 app.include_router(demo_router, prefix=settings.API_V1_PREFIX)
 
 

@@ -116,3 +116,7 @@ def users_collection():
 
 def projects_collection():
     return mongodb.db.projects
+
+
+def knowledge_collection():
+    return mongodb.db.knowledge
