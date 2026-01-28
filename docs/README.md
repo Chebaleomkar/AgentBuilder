@@ -11,6 +11,7 @@ Welcome to the AgentBuilder documentation. This guide will help you understand t
 | [Application Flow](./app-flow.md) | How data flows through the system |
 | [API Reference](./api-reference.md) | Complete API documentation |
 | [Development Guide](./development-guide.md) | Getting started with development |
+| [RAG & Grounding](./rag-system.md) | How the knowledge base and grounding work |
 
 ## 🎯 What is AgentBuilder?
 

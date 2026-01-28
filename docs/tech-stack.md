@@ -38,7 +38,7 @@ A breakdown of every technology used in AgentBuilder and why we chose it.
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **OpenAI SDK** | 1.12 | GPT models |
-| **google-generativeai** | 0.8 | Gemini models |
+| **google-generativeai** | 0.8 | Gemini models & Embeddings |
 | **Anthropic** | 0.18 | Claude (planned) |
 | **Tiktoken** | 0.5 | Token counting |
 
@@ -46,9 +46,10 @@ A breakdown of every technology used in AgentBuilder and why we chose it.
 
 | Technology | Purpose |
 |------------|---------|
-| **ChromaDB** | Local vector database |
+| **Pinecone** | Serverless Vector Database |
+| **Google Gemini**| `text-embedding-004` models |
 
-Used for knowledge-base memory and RAG search tools.
+Used for knowledge-base indexing, high-fidelity RAG search, and cross-agent data isolation via namespaces.
 
 ### Utilities
 

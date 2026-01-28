@@ -153,6 +153,41 @@ POST /agents/{agent_id}/execute
 
 ---
 
+## 📚 Knowledge Base
+
+### Get Knowledge Base
+```http
+GET /knowledge/{agent_id}
+```
+Returns the list of sources for an agent.
+
+### Upload File
+```http
+POST /knowledge/{agent_id}/upload
+```
+**Body:** `multipart/form-data`
+- `file`: The document (PDF, DOCX, TXT)
+- `name`: (Optional) Display name
+
+### Add Text Source
+```http
+POST /knowledge/{agent_id}/text
+```
+**Body:**
+```json
+{
+  "name": "Quick Fact",
+  "content": "The office is closed on Bank Holidays."
+}
+```
+
+### Delete Source
+```http
+DELETE /knowledge/{agent_id}/{source_id}
+```
+
+---
+
 ## 🔄 Workflows
 
 ### List Workflows

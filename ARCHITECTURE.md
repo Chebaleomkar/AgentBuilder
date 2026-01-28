@@ -251,5 +251,5 @@ curl -X POST http://localhost:8000/api/v1/agents/demo/research \
 - **Backend**: Python 3.11+, FastAPI, Pydantic, SQLite/PostgreSQL
 - **Frontend**: Next.js 14+, TypeScript, React, TailwindCSS (if needed)
 - **AI Framework**: agenticaiframework
-- **Vector Store**: ChromaDB (for RAG)
+- **Vector Store**: Pinecone (for RAG)
 - **Caching**: Redis (optional)
